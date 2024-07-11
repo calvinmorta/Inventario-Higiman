@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Almacén Higiman</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        .entry {
+            margin-top: 10px;
+        }
+        #barcode-scanner {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Inventario Almacén Higiman</h1>
+        
+        <div class="form-group">
+            <label for="barcode">Código de Barras:</label>
+            <input type="text" class="form-control" id="barcode" placeholder="Escanee el código de barras" oninput="validateBarcode()" onkeypress="return enterKey(event, 'quantity')">
+        </div>
+        
+        <div class="form-group">
+            <label for="quantity">Cantidad:</label>
+            <input type="number" class="form-control" id="quantity" min="1" onkeypress="return enterKey(event, 'addButton')">
+        </div>
+        
+        <button class="btn btn-primary" id="addButton" onclick="addEntry()">Agregar</button>
+        <button class="btn btn-success" onclick="copyEntries()">Copiar datos</button>
+        <button class="btn btn-danger" onclick="clearEntries()">Borrar datos</button>
+        
+        <h2 class="text-center mt-4">Datos Guardados:</h2>
+        <div id="data" class="mt-3"></div>
+        
+        <h2 class="text-center mt-4">Escanear Código de Barras</h2>
+        <div id="barcode-scanner"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script>
+        let entries = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            startScanner();
+        });
+
+        function startScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#barcode-scanner'),
+                    constraints: {
+                        width: 480,
+                        height: 320,
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: ["code_39_reader"]
+                }
+            }, function(err) {
+                if (err) {
+                    console.log(err);
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected(function(result) {
+                let code = result.codeResult.code;
+                document.getElementById('barcode').value = code;
+                Quagga.stop();
+            });
+        }
+
+        function validateBarcode() {
+            let barcodeInput = document.getElementById('barcode');
+            let barcode = barcodeInput.value.toUpperCase();
+            let validCode39 = /^[A-Z0-9\-.$/+% ]+$/;
+
+            if (!validCode39.test(barcode)) {
+                alert('Código de barras no válido. Solo se permiten caracteres Code 39.');
+                barcodeInput.value = '';
+            }
+        }
+        
+        function addEntry() {
+            let barcode = document.getElementById('barcode').value.trim();
+            let quantity = document.getElementById('quantity').value;
+            
+            if (barcode && quantity) {
+                entries.push({ barcode: barcode, quantity: quantity });
+                document.getElementById('barcode').value = '';
+                document.getElementById('quantity').value = '';
+                document.getElementById('barcode').focus();
+                showEntries();
+                startScanner();  // Restart scanner for the next scan
+            } else {
+                alert('Por favor, complete ambos campos.');
+            }
+        }
+        
+        function showEntries() {
+            let dataDiv = document.getElementById('data');
+            dataDiv.innerHTML = '';
+            
+            if (entries.length > 0) {
+                entries.forEach(entry => {
+                    let entryDiv = document.createElement('div');
+                    entryDiv.classList.add('entry');
+                    entryDiv.textContent = `Artículo: ${entry.barcode}, Cantidad: ${entry.quantity}`;
+                    dataDiv.appendChild(entryDiv);
+                });
+            } else {
+                dataDiv.textContent = 'No hay datos guardados.';
+            }
+        }
+
+        function copyEntries() {
+            let textToCopy = entries.map(entry => `Artículo: ${entry.barcode}, Cantidad: ${entry.quantity}`).join('\n');
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('Datos copiados al portapapeles.');
+            }).catch(err => {
+                alert('Error al copiar los datos: ' + err);
+            });
+        }
+
+        function clearEntries() {
+            entries = [];
+            showEntries();
+        }
+
+        function enterKey(event, nextFieldId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById(nextFieldId).focus();
+                return false;
+            }
+            return true;
+        }
+    </script>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
